@@ -1,0 +1,89 @@
+body, html {
+  width:100%;
+  height:100%;
+  margin:0px;
+}
+
+body * {
+  box-sizing: border-box;
+}
+
+/* #root {
+  background: #fff;
+  border-radius: 4px;
+  padding: 10px 20px 30px 20px;
+  height: 90%;
+} */
+
+/* input {
+  margin: 1px 5px;
+  padding: 0px 2px;
+  width: 90%;
+} */
+
+.toolbar {
+  top: 0px;
+  padding: 5px;
+  margin-bottom: 5px;
+}
+
+.sand {
+  height: 100%;
+}
+
+.main {
+  width: 100%;
+  height: 100%;
+  padding: 0px;
+  margin: 0px;
+}
+
+.shadow {
+  box-shadow: 0 2px 2px rgba(0,0,0,0.15);
+}
+
+/* component style */
+
+.canvasWrapper {
+  height:100%;
+  width:100%;
+  overflow: hidden;
+  background-image: url(data:image/gif;base64,R0lGODlhCgAKAIAAAOLi4v///yH5BAAHAP8ALAAAAAAKAAoAAAIRhB2ZhxoM3GMSykqd1VltzxQAOw==);
+}
+
+.canvasWrapper:focus {
+  outline:0;
+} 
+
+.paper {
+  width:100%;
+  height:100%;
+  margin:0px;
+}
+
+button {
+  border: 0;
+  background-color: transparent;
+  cursor: pointer;
+  margin: 0 2px;
+  padding: 2px;
+  border: 1px solid rgba(85, 85, 85, 1);
+  border-radius: 6px;
+  display: inline-block;
+  vertical-align: middle;
+  opacity: 0.6;
+}
+
+button:hover {
+  opacity: 1;
+}
+
+button img, button svg {
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+}
+
+button:focus {
+  outline:0;
+}
