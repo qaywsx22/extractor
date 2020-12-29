@@ -8,13 +8,12 @@ class Paper extends React.Component {
     super(props)
     this.state = {
           file: null
-      }   
+    }   
     this.updateViewBoxPosition = this.updateViewBoxPosition.bind(this);
-    this.resetZoom = this.resetZoom.bind(this);
+    this.setZoom = this.setZoom.bind(this);
     this.resetPosition = this.resetPosition.bind(this);
     this.clearCanvas = this.clearCanvas.bind(this);
     this.cropImage = this.cropImage.bind(this);
-    this.doZoom = this.doZoom.bind(this);
     this.loadRasterImage = this.loadRasterImage.bind(this);
     this.loadSVGImage = this.loadSVGImage.bind(this);
     this.loadCropedImage = this.loadCropedImage.bind(this);
@@ -31,9 +30,6 @@ class Paper extends React.Component {
     this.newFlag = false;
     this.mdp = null;
     this.pausePanning = false;
-    this.zoomStartScale = null;
-    this.zoomOutFactor = 1.05;
-    this.zoomInFactor = 0.95;
     this.allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
     this.imageOptions = {
       hasControls: false,
@@ -51,7 +47,9 @@ class Paper extends React.Component {
 }
 
   onMouseWheel(opt) {
-    this.doZoom(opt.e.deltaY < 0);
+    var pt = this.paper.getPointer(opt);
+    var point = new fabric.Point(pt.x, pt.y);
+    this.props.onMouseWheelZoom(opt.e.deltaY < 0, point);
     opt.e.preventDefault();
     opt.e.stopPropagation();
   }
@@ -62,14 +60,13 @@ class Paper extends React.Component {
     }
     this.mdp = {x:evt.e.screenX, y:evt.e.screenY};
     if (!evt.e.ctrlKey) {
-      // var obj = this.paper.findTarget(evt);
       this.startPos = this.paper.getPointer(evt);
       if (this.mask == null) {
         this.mask = new fabric.Rect({
-          fill: 'transparent',
+          fill: "rgba(255,255,0,0.2)",
           stroke: 'red',
-          strokeDashArray: [2, 2],
-          "stroke-width": 1,
+          strokeDashArray: [8, 8],
+          "stroke-width": 2,
           opacity: 1.0,
           left: this.startPos.x,
           top: this.startPos.y,
@@ -166,36 +163,18 @@ class Paper extends React.Component {
       this.paper.relativePan(delta);
     }
   }
-  // reset zoom to 1.0
-  resetZoom() {
-    this.paper.setZoom(1.0);
-    var items = this.paper.getObjects();
-    if (items.length) {
-      var obj = items[0];
-      if (obj)  {
-        this.paper.viewportCenterObject(obj);
-      }
+
+  setZoom(val, point) {
+    var pt = point;
+    if (pt == null) {
+      pt = this.paper.getVpCenter();
     }
-    console.log("zoom set to 1.0");
+    this.paper.zoomToPoint(pt, val);
   }
 
   // reset viewport position to 0,0
   resetPosition() {
     this.paper.absolutePan(new fabric.Point(0, 0));
-  }
-
-  doZoom(out) {
-    var zf = out ? this.zoomOutFactor : this.zoomInFactor;
-    var zoom = this.paper.getZoom() * zf;
-    this.paper.setZoom(zoom);
-    var items = this.paper.getObjects();
-    if (items.length) {
-      var obj = items[0];
-      if (obj)  {
-        this.paper.viewportCenterObject(obj);
-      }
-    }
-    console.log("zoom set to "+this.paper.getZoom());
   }
 
   onKeyDown(e) {
@@ -216,7 +195,9 @@ class Paper extends React.Component {
   }
 
   clearCanvas() {
-    this.resetZoom();
+    if (this.props.resetZoom != null) {
+      this.props.resetZoom();
+    }
     this.resetPosition();
     this.moveFlag = false;
     this.newFlag = false;
@@ -329,7 +310,9 @@ class Paper extends React.Component {
 
   initCanvas() {
     this.paper.selection = false;
-    this.paper.on('mouse:wheel', this.onMouseWheel.bind(this));
+    if (this.props.onMouseWheelZoom != null) {
+      this.paper.on('mouse:wheel', this.onMouseWheel.bind(this));
+    }
     this.paper.on('mouse:down', this.onMouseDown.bind(this));
     this.paper.on('mouse:up', this.onMouseUp.bind(this));
     this.paper.on('mouse:move', this.onMouseMove.bind(this));
@@ -348,14 +331,16 @@ class Paper extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // if (this.state.file === prevState.file) {
+    if (this.props.zoom !== this.paper.getZoom()) {
+      this.setZoom(this.props.zoom, this.props.point);
+    }
     if (this.state.file === null) {
         return;
     }
     var file = this.state.file;
+    this.clearCanvas();
     // check type
     if (this.allowedTypes.includes(file.type)) {
-      this.clearCanvas();
       var reader = new FileReader();
       var callback = null;
 
