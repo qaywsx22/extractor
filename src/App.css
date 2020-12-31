@@ -90,10 +90,16 @@ button {
   vertical-align: middle;
   opacity: 0.6;
   flex-basis: 0;
+  user-select: none;
 }
 
 button:hover {
   opacity: 1;
+}
+
+button:disabled {
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 button img, button svg {
@@ -123,4 +129,60 @@ button:focus {
 
 .filler {
   flex: 1;
+}
+
+.shield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);  
+  pointer-events: none;
+}
+
+/* - busy indicator stuff - */
+.viewer-busyind {
+  /* display: none; */
+  /* z-index: 65536; */
+	position: absolute;
+	width: 64px;
+	height: 64px;
+	top: 49%;
+	left: 49%;
+	margin-top: -32px;
+	margin-left: -32px;
+	border: 12px solid #8f8f8f;
+	border-right-color: transparent;
+	border-radius: 50%;
+ 	-webkit-animation: viewer-spin 3s linear infinite;
+ 	-moz-animation: viewer-spin 1s linear infinite;
+	-ms-animation: viewer-spin 1s linear infinite;
+	-o-animation: viewer-spin 1s linear infinite;
+	animation: viewer-spin 1s linear infinite;
+}
+@-webkit-keyframes viewer-spin {
+	from { -webkit-transform: rotate(0deg); opacity: 0.4; }
+	50% { -webkit-transform: rotate(180deg); opacity: 1; }
+	to { -webkit-transform: rotate(360deg); opacity: 0.4; }
+}
+@-moz-keyframes viewer-spin {
+	from { -moz-transform: rotate(0deg); opacity: 0.4; }
+	50% { -moz-transform: rotate(180deg); opacity: 1; }
+	to { -moz-transform: rotate(360deg); opacity: 0.4; }
+}
+@-ms-keyframes viewer-spin {
+	from { -ms-transform: rotate(0deg); opacity: 0.4; }
+	50% { -ms-transform: rotate(180deg); opacity: 1; }
+	to { -ms-transform: rotate(360deg); opacity: 0.4; }
+}
+@-o-keyframes viewer-spin {
+	from { -o-transform: rotate(0deg); opacity: 0.4; }
+	50% { -o-transform: rotate(180deg); opacity: 1; }
+	to { -o-transform: rotate(360deg); opacity: 0.4; }
+}
+@keyframes viewer-spin {
+	from { transform: rotate(0deg); opacity: 0.2; }
+	50% { transform: rotate(180deg); opacity: 1; }
+	to { transform: rotate(360deg); opacity: 0.2; }
 }

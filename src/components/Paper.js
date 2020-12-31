@@ -19,6 +19,7 @@ class Paper extends React.Component {
     this.loadCropedImage = this.loadCropedImage.bind(this);
     this.cancelMask = this.cancelMask.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.removeOldImage = this.removeOldImage.bind(this);
 
     this.wrapper = React.createRef();
     this.paperId = React.createRef();
@@ -74,9 +75,22 @@ class Paper extends React.Component {
           height: 0,
           evented: true,
           selectable: true,
+          // hasControls: false,
+          lockScewingX: true,
+          lockScewingY: true,
+          lockRotation: true,
+          selectionBorderColor: 'red',
+          transparentCorners: true,
+          cornerColor: 'red',
+          cornerStrokeColor: 'red',
+          // borderColor: 'red',
+          // borderDashArray: [3, 3],
+          // padding: 10,
+          hasBorder: false,
           id: "mask"
         });
         this.paper.add(this.mask);
+        this.mask.setControlVisible("mtr", false);
         this.paper.requestRenderAll();
         this.newFlag = true;
       }
@@ -109,6 +123,7 @@ class Paper extends React.Component {
             o.top = endPos.y;
           }
           this.mask.setCoords(o);
+          this.paper.setActiveObject(this.mask);
           this.paper.requestRenderAll();
         }
         else if (this.newFlag) {
@@ -194,7 +209,7 @@ class Paper extends React.Component {
     this.paper.requestRenderAll();
   }
 
-  clearCanvas() {
+  removeOldImage() {
     if (this.props.resetZoom != null) {
       this.props.resetZoom();
     }
@@ -214,6 +229,10 @@ class Paper extends React.Component {
       this.paper.clear();
       this.paper.requestRenderAll();
     }
+  }
+
+  clearCanvas() {
+    this.removeOldImage();
     this.setState({file: null});
   }
 
@@ -280,6 +299,10 @@ class Paper extends React.Component {
 
     this.paper.requestRenderAll();
     this.paper.fire('object:modified');
+    // hide shield
+    if (this.props.shieldHandler != null) {
+      this.props.shieldHandler(false);
+    }
   }  
 
   loadSVGImage(objects, options) {
@@ -290,6 +313,10 @@ class Paper extends React.Component {
 
     this.paper.renderAll()
     this.paper.fire('object:modified')
+    // hide shield
+    if (this.props.shieldHandler != null) {
+      this.props.shieldHandler(false);
+    }
   }
   
   loadRasterImage(img) {
@@ -306,6 +333,10 @@ class Paper extends React.Component {
 
     this.paper.renderAll();
     this.paper.fire('object:modified');
+    // hide shield
+    if (this.props.shieldHandler != null) {
+      this.props.shieldHandler(false);
+    }
   }
 
   initCanvas() {
@@ -348,7 +379,7 @@ class Paper extends React.Component {
       if (file.type === 'image/svg+xml') {
         callback = this.loadSVGImage;
         reader.onload = function(f) {
-          fabric.loadSVGFromString(f.target.result, this.loadSVGImage);
+          fabric.loadSVGFromString(f.target.result, callback, null, {crossOrigin: 'anonymous'});
         }
         reader.readAsText(file);
         return;

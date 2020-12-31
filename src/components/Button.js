@@ -1,7 +1,7 @@
 import React from 'react';
 // import './Button.css';
 
-const Button = React.forwardRef((props, ref) => (
+var Button = React.forwardRef((props, ref) => (
   <button
     ref={ref}
     onClick={props.handleClick}

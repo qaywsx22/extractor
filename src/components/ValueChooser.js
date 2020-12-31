@@ -38,7 +38,9 @@ class ValueChooser extends React.Component {
             }
             this.mainContainer.current.setAttribute("class", cl);
         }
-
+        if (!this.state.active) {
+            return;
+        }
         if (prevProps == null || this.props.leftSeparator !== prevProps.leftSeparator) {
             cl = this.leftSeparator.current.getAttribute("class");
             if (this.props.leftSeparator) {
@@ -60,6 +62,7 @@ class ValueChooser extends React.Component {
             }
             this.rightSeparator.current.setAttribute("class", cl);
         }
+
         if (prevProps == null) {
             if (prevState == null) {
                 this.input.current.value = this.state.value;
@@ -69,11 +72,32 @@ class ValueChooser extends React.Component {
             this.input.current.value = this.props.currentValue;
         }
 
+        if (this.input.current != null) {
+            var cur = parseFloat(this.input.current.value);
+            var min = parseFloat(this.input.current.min);
+            var max = parseFloat(this.input.current.max);
+            if (this.decrementButton.current != null) {
+                if (!isNaN(cur) && cur > min) {
+                    this.decrementButton.current.disabled = false;
+                }
+                else {
+                    this.decrementButton.current.disabled = true;
+                }
+            }
+            if (this.incrementButton.current != null) {
+                if (!isNaN(cur) && cur < max) {
+                    this.incrementButton.current.disabled = false;
+                }
+                else {
+                    this.incrementButton.current.disabled = true;
+                }
+            }
+        }
     }
 
     onKeyDown(e) {
         if (this.props.blurAndEnterHandler != null && e.keyCode === 13  && this.oldInputValue !== this.input.current.value) { // ENTER
-            this.props.blurAndEnterHandler(this.input.current.value);
+            this.props.blurAndEnterHandler(parseFloat(this.input.current.value));
             this.oldInputValue = this.input.current.value;
         }
     }
