@@ -186,3 +186,53 @@ button:focus {
 	50% { transform: rotate(180deg); opacity: 1; }
 	to { transform: rotate(360deg); opacity: 0.2; }
 }
+
+.dlg {
+  width: 400px;
+  height: 300px;
+  margin:auto;
+  z-index: 3;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+}
+
+.dialogwrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  align-items: center;
+}
+
+.dlgtitle {
+  font-size: 16pt;
+  padding: 5px 10px;
+  flex-basis: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dialogwrapper.active {
+  display: flex !important;
+}
+
+.dlg .toolbar {
+  flex-basis: 0;
+}
+
+.dlg .dlgcontent {
+  flex-shrink: 1;
+  flex-grow: 1;
+  border-bottom-style: solid;
+  border-color: rgba(0,0,0,0.15);
+  border-bottom-width: 1px; 
+  padding: 1rem;
+}
+
+.dlgrow {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+}

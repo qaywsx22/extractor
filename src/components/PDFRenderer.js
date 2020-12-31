@@ -124,7 +124,7 @@ class PDFRenderer extends React.Component {
 
   update(prevState) {
     var act = (this.state.file != null && this.state.file.name.endsWith(".pdf"));
-    if (this.state.active !== act) {
+    if (this.pager.current.state.active !== act) {
       this.pager.current.setState({active: act});
     }
     return act;

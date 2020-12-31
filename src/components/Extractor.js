@@ -4,7 +4,8 @@ import Button from './Button';
 import Paper from './Paper';
 import PDFRenderer from './PDFRenderer';
 import ValueChooser from './ValueChooser';
-import Shield from './Shield';
+import BusyIndicator from './BusyIndicator';
+import Dialog from './Dialog';
 // import './Extractor.css';
 
 var ZoomContext = React.createContext(1.0);
@@ -18,13 +19,16 @@ class Extractor extends React.Component {
     this.hiddenFileInput = React.createRef();
     this.pdfRend = React.createRef();
     this.zoomer = React.createRef();
-    this.shield = React.createRef();
+    this.busyind = React.createRef();
+    this.modDialog = React.createRef();
 
     this.processFiles = this.processFiles.bind(this);
     this.loadImage = this.loadImage.bind(this);
     this.doZoom = this.doZoom.bind(this);
     this.setZoom = this.setZoom.bind(this);
     this.setShieldActive = this.setShieldActive.bind(this);
+    this.showModalDialog = this.showModalDialog.bind(this);
+    this.onDialogAccept = this.onDialogAccept.bind(this);
 
 
     this.state = {
@@ -38,18 +42,24 @@ class Extractor extends React.Component {
   }
 
   setShieldActive(act) {
-    if (this.shield.current != null) {
-      var cl = this.shield.current.getAttribute("class");
+    if (this.busyind.current != null) {
+      var cl = this.busyind.current.getAttribute("class");
       if (act) {
           cl = classNames(cl, {active:true, inactive: false});
       }
       else {
           cl = classNames(cl, {active:false, inactive: true});
       }
-      this.shield.current.setAttribute("class", cl);
+      this.busyind.current.setAttribute("class", cl);
     }
   }
-  
+
+  showModalDialog() {
+    if (this.modDialog.current != null) {
+      this.modDialog.current.setState({active: true});
+    }
+  }
+
   processFiles(e) {
     if (e.target.files != null && e.target.files.length === 1) {
       // show shield
@@ -93,6 +103,10 @@ class Extractor extends React.Component {
     this.hiddenFileInput.current.click();
   }
   
+  onDialogAccept() {
+    console.log("Dialog content accepted");
+  }
+
   render() {
     var curzoom = this.state.zoom;
     var point = this.state.point;
@@ -120,7 +134,7 @@ class Extractor extends React.Component {
               <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => console.log("Try to vectorize") }>
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>
               </Button>
-              <Button name="save" title={"Save"} className={"active"} handleClick={ () => console.log("Save vector image") }>
+              <Button name="save" title={"Save"} className={"active"} handleClick={ () => this.showModalDialog() }>
                 <img alt={"Save"} src="assets/save-outline.svg"></img>
               </Button>
 
@@ -168,7 +182,20 @@ class Extractor extends React.Component {
           </ZoomContext.Provider>
 
           <input ref={this.hiddenFileInput} type="file" style={{display: 'none'}} onChange={this.processFiles}/>
-          <Shield ref={this.shield}/>
+
+          <BusyIndicator ref={this.busyind}/>
+
+          <Dialog ref={this.modDialog} acceptCallback={this.onDialogAccept} title={"Save dialog"}>
+            <div className={"dlgrow"}>
+              <label>Measurement</label>
+              <input type="text" placeholder={"30 ft"}></input>
+            </div>
+            <div className={"dlgrow"}>
+              <label>File name</label>
+              <input type="text"></input>
+            </div>
+          </Dialog>
+
         </div>
     )
   }

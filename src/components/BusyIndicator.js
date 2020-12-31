@@ -1,11 +1,11 @@
 import React from 'react';
-// import './Shield.css';
+// import './BusyIndicator.css';
 
-var Shield = React.forwardRef((props, ref) => (
+var BusyIndicator = React.forwardRef((props, ref) => (
   <div className="shield inactive" ref={ref}>
     <div className="viewer-busyind"></div>
     {props.children}
   </div>
 ))
 
-export default Shield;
+export default BusyIndicator;
