@@ -2,12 +2,36 @@ import React from 'react';
 import {fabric} from 'fabric';
 // import './Paper.css';
 
+function b64toBlob(b64Data, contentType, sliceSize) {
+  contentType = contentType || '';
+  sliceSize = sliceSize || 512;
+
+  var byteCharacters = atob(b64Data);
+  var byteArrays = [];
+
+  for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      var slice = byteCharacters.slice(offset, offset + sliceSize);
+
+      var byteNumbers = new Array(slice.length);
+      for (var i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+      }
+
+      var byteArray = new Uint8Array(byteNumbers);
+
+      byteArrays.push(byteArray);
+  }
+
+  var blob = new Blob(byteArrays, {type: contentType});
+  return blob;
+}
+
 class Paper extends React.Component {
 
   constructor(props) {
     super(props)
     this.state = {
-          file: null
+      file: null
     }   
     this.updateViewBoxPosition = this.updateViewBoxPosition.bind(this);
     this.setZoom = this.setZoom.bind(this);
@@ -16,6 +40,7 @@ class Paper extends React.Component {
     this.cropImage = this.cropImage.bind(this);
     this.loadRasterImage = this.loadRasterImage.bind(this);
     this.loadSVGImage = this.loadSVGImage.bind(this);
+    this.loadResultSVGImage = this.loadResultSVGImage.bind(this);
     this.loadCropedImage = this.loadCropedImage.bind(this);
     this.cancelMask = this.cancelMask.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
@@ -24,6 +49,8 @@ class Paper extends React.Component {
     this.wrapper = React.createRef();
     this.paperId = React.createRef();
 
+    this.crBlob = null;
+    this.crImgUrl = null;
     this.paper = null;
     this.mask = null;
     this.startPos = null;
@@ -233,6 +260,8 @@ class Paper extends React.Component {
 
   clearCanvas() {
     this.removeOldImage();
+    // this.crBlob = null
+    // this.crImgUrl = null;
     this.setState({file: null});
   }
 
@@ -279,6 +308,9 @@ class Paper extends React.Component {
           withoutShadow: true
         };
         var cloned = target.toDataURL(optObj);
+        var crBlob = b64toBlob(cloned.split(",")[1], "image/png");
+        this.crBlob = crBlob;
+        this.crImgUrl = cloned;
         fabric.Image.fromURL(cloned, this.loadCropedImage);
       }
     }
@@ -299,11 +331,17 @@ class Paper extends React.Component {
 
     this.paper.requestRenderAll();
     this.paper.fire('object:modified');
+
     // hide shield
     if (this.props.shieldHandler != null) {
       this.props.shieldHandler(false);
     }
   }  
+ 
+  loadResultSVGImage(svgString) {
+    this.clearCanvas();        
+    fabric.loadSVGFromString(svgString, this.loadSVGImage, null, {crossOrigin: 'anonymous'});  
+  }
 
   loadSVGImage(objects, options) {
     var obj = fabric.util.groupSVGElements(objects, options);

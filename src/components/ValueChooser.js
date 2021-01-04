@@ -23,7 +23,7 @@ class ValueChooser extends React.Component {
         this.onBlurI = this.onBlurI.bind(this);
         this.onFocusI = this.onFocusI.bind(this);
 
-        this.oldInputValue = null;
+        this.oldInputValue = null; 
     }
 
     update(prevState, prevProps) {

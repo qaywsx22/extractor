@@ -6,6 +6,7 @@ import PDFRenderer from './PDFRenderer';
 import ValueChooser from './ValueChooser';
 import BusyIndicator from './BusyIndicator';
 import Dialog from './Dialog';
+// import ImageTracer from './imagetracer_v1.2.6';
 // import './Extractor.css';
 
 var ZoomContext = React.createContext(1.0);
@@ -29,7 +30,9 @@ class Extractor extends React.Component {
     this.setShieldActive = this.setShieldActive.bind(this);
     this.showModalDialog = this.showModalDialog.bind(this);
     this.onDialogAccept = this.onDialogAccept.bind(this);
-
+    this.doVectorizeExtern = this.doVectorizeExtern.bind(this);
+    this.doVectorizeIntern = this.doVectorizeIntern.bind(this);
+    this.showSVGResult = this.showSVGResult.bind(this);
 
     this.state = {
       zoom: '1.0',
@@ -62,13 +65,17 @@ class Extractor extends React.Component {
 
   processFiles(e) {
     if (e.target.files != null && e.target.files.length === 1) {
-      // show shield
-      this.setShieldActive(true);
-      this.pdfRend.current.setState({
-        paperSetImage: this.pap.current.loadRasterImage, 
-        file: e.target.files.item(0)
-      });
-      this.pap.current.setState({file: e.target.files.item(0)});
+      if (this.pap.current.allowedTypes.includes(e.target.files.item(0).type) || e.target.files.item(0).name.endsWith(".pdf")) {
+        // show shield
+        this.setShieldActive(true);
+        this.pap.current.crBlob = null
+        this.pap.current.crImgUrl = null;
+          this.pdfRend.current.setState({
+          paperSetImage: this.pap.current.loadRasterImage, 
+          file: e.target.files.item(0)
+        });
+        this.pap.current.setState({file: e.target.files.item(0)});
+      }
       e.target.value = null;
     }
   }
@@ -107,6 +114,48 @@ class Extractor extends React.Component {
     console.log("Dialog content accepted");
   }
 
+  doVectorizeExtern(pngBlob) {
+    if (pngBlob == null) {
+      return;
+    }
+    // show shield
+    this.setShieldActive(true);
+    var proxyurl = "https://cors-anywhere.herokuapp.com/";
+    var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20&input=clipart&output=svg&svgversion=1.1';
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", (proxyurl+url), true); // method, url, async
+    xhr.setRequestHeader("Cache-Control", "no-cache");
+    xhr.setRequestHeader("Content-Type", "multipart/form-data");
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {      // completed
+          if (xhr.status === 200) {    // OK
+              var response = xhr.responseText;
+              console.log(response.type);
+          }
+          else {
+            console.log("Vectorize error: "+xhr.status);
+          }
+      }
+    }    
+    xhr.send(pngBlob);
+  }
+
+  showSVGResult(svgImgStr) {
+    this.pap.current.loadResultSVGImage(svgImgStr);
+  }
+
+  doVectorizeIntern(pngImg) {
+    if (pngImg == null) {
+      return;
+    }
+    // show shield
+    this.setShieldActive(true);
+    if (window.ImageTracer != null) {
+      window.ImageTracer.imageToSVG(pngImg, this.showSVGResult);
+    }
+  }
+
   render() {
     var curzoom = this.state.zoom;
     var point = this.state.point;
@@ -128,10 +177,10 @@ class Extractor extends React.Component {
                 <img alt={"Clear canvas"} src="assets/close-circle-outline.svg"></img>
               </Button>
 
-              <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => this.pap.current.cropImage() }>
+              <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => {this.pap.current.cropImage(); this.setShieldActive(true);} }>
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
-              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => console.log("Try to vectorize") }>
+              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }>
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>
               </Button>
               <Button name="save" title={"Save"} className={"active"} handleClick={ () => this.showModalDialog() }>
