@@ -120,8 +120,10 @@ class Extractor extends React.Component {
     }
     // show shield
     this.setShieldActive(true);
-    var proxyurl = "https://cors-anywhere.herokuapp.com/";
+    // var proxyurl = "https://cors-anywhere.herokuapp.com/";
+    var proxyurl = "";
     var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20&input=clipart&output=svg&svgversion=1.1';
+    // var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295';
     var xhr = new XMLHttpRequest();
     xhr.open("POST", (proxyurl+url), true); // method, url, async
     xhr.setRequestHeader("Cache-Control", "no-cache");
@@ -180,7 +182,8 @@ class Extractor extends React.Component {
               <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => {this.pap.current.cropImage(); this.setShieldActive(true);} }>
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
-              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }>
+              {/* <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }> */}
+              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeExtern(this.pap.current.crBlob) }>
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>
               </Button>
               <Button name="save" title={"Save"} className={"active"} handleClick={ () => this.showModalDialog() }>
