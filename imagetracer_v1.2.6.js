@@ -35,8 +35,7 @@ For more information, please refer to http://unlicense.org/
 
 */
 
-(function(){
-	//  'use strict';
+(function(){ 'use strict';
 
 function ImageTracer(){
 	var _this = this;
