@@ -122,7 +122,7 @@ class Extractor extends React.Component {
     this.setShieldActive(true);
     // var proxyurl = "https://cors-anywhere.herokuapp.com/";
     var proxyurl = "";
-    var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20&input=clipart&output=svg&svgversion=1.1';
+    var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20';
     // var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295';
     var xhr = new XMLHttpRequest();
     xhr.open("POST", (proxyurl+url), true); // method, url, async
