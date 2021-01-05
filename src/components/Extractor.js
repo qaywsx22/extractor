@@ -182,8 +182,8 @@ class Extractor extends React.Component {
               <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => {this.pap.current.cropImage(); this.setShieldActive(true);} }>
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
-              {/* <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }> */}
-              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeExtern(this.pap.current.crBlob) }>
+              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }>
+              {/* <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeExtern(this.pap.current.crBlob) }> */}
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>
               </Button>
               <Button name="save" title={"Save"} className={"active"} handleClick={ () => this.showModalDialog() }>
