@@ -27,15 +27,15 @@ function b64toBlob(b64Data, contentType, sliceSize) {
 }
 
 function addPoint(evt, peer) {
-  var curZoom = peer.paper.getZoom();
+  var curpos = peer.paper.getPointer(evt);
   var pointOption = {
     id: new Date().getTime(),
     radius: 5,
     fill: '#ffffff',
     stroke: '#333333',
     strokeWidth: 0.5,
-    left: evt.e.layerX / curZoom,
-    top: evt.e.layerY / curZoom,
+    left: curpos.x,
+    top: curpos.y,
     selectable: false,
     hasBorders: false,
     hasControls: false,
@@ -44,10 +44,10 @@ function addPoint(evt, peer) {
     objectCaching: false,
   };
   var linePoints = [
-    evt.e.layerX / curZoom,
-    evt.e.layerY / curZoom,
-    evt.e.layerX / curZoom,
-    evt.e.layerY / curZoom,
+    curpos.x,
+    curpos.y,
+    curpos.x,
+    curpos.y
   ];
   var lineOption = {
     strokeWidth: 2,
@@ -78,11 +78,10 @@ function addPoint(evt, peer) {
   var polygon = null;
 
   if (peer.mask != null) {
-    var pos = peer.paper.getPointer(evt.e);
     var points = peer.mask.get('points');
     points.push({
-      x: pos.x,
-      y: pos.y
+      x: curpos.x,
+      y: curpos.y
     });
     polygon = new fabric.Polygon(points, {
       stroke: '#333333',
@@ -93,7 +92,7 @@ function addPoint(evt, peer) {
       hasBorders: false,
       hasControls: false,
       evented: false,
-      objectCaching: false,
+      objectCaching: false
     });
     peer.paper.remove(peer.mask);
     peer.paper.add(polygon);
@@ -102,8 +101,8 @@ function addPoint(evt, peer) {
   } 
   else {
     var polyPoint = [{
-      x: evt.e.layerX / curZoom,
-      y: evt.e.layerY / curZoom,
+      x: curpos.x,
+      y: curpos.y
     }, ];
     polygon = new fabric.Polygon(polyPoint, {
       stroke: '#333333',
@@ -130,7 +129,6 @@ function addPoint(evt, peer) {
 
 function generatePolygon(peer) {
   var points = [];
-  // collect points and remove them from canvas
   for (var point of peer.pointArray) {
     points.push({
       x: point.left,
@@ -139,15 +137,12 @@ function generatePolygon(peer) {
     peer.paper.remove(point);
   }
 
-  // remove lines from canvas
   for (var line of peer.lineArray) {
     peer.paper.remove(line);
   }
 
-  // remove selected Shape and Line 
   peer.paper.remove(peer.mask).remove(peer.activeLine);
 
-  // create polygon from collected points
   var polygon = new fabric.Polygon(points, {
     id: "mask",
     objectCaching: false,
@@ -156,11 +151,12 @@ function generatePolygon(peer) {
     fill: "rgba(255,255,0,0.2)",
     stroke: 'red',
     strokeDashArray: [8, 8],
-    strokeWidth: 2,
+    strokeWidth: 1,
     opacity: 1.0
 });
   peer.paper.add(polygon);
   peer.mask = polygon;
+  peer.mask.setControlVisible("mtr", false);
 
   toggleDrawPolygon(peer);
   resizePolygon(peer);
@@ -207,50 +203,49 @@ function editPolygon(peer) {
 }
 
 function polygonPositionHandler(dim, finalMatrix, fabricObject) {
-  var transformPoint = {
-    x: fabricObject.points[this.pointIndex].x - fabricObject.pathOffset.x,
-    y: fabricObject.points[this.pointIndex].y - fabricObject.pathOffset.y,
-  };
-  return fabric.util.transformPoint(transformPoint, fabricObject.calcTransformMatrix());
+  var x = (fabricObject.points[this.pointIndex].x - fabricObject.pathOffset.x),
+      y = (fabricObject.points[this.pointIndex].y - fabricObject.pathOffset.y);
+  
+  return fabric.util.transformPoint(
+    { x: x, y: y },
+    fabric.util.multiplyTransformMatrices(
+      fabricObject.canvas.viewportTransform,
+      fabricObject.calcTransformMatrix()
+    )
+  );
 }
 
 function actionHandler(eventData, transform, x, y) {
-  var polygon = transform.target;
-  var currentControl = polygon.controls[polygon.__corner];
-  var mouseLocalPosition = polygon.toLocalPoint(new fabric.Point(x, y), 'center', 'center');
-  var size = polygon._getTransformedDimensions(0, 0);
-  var finalPointPosition = {
-    x: (mouseLocalPosition.x * polygon.width) / size.x + polygon.pathOffset.x,
-    y: (mouseLocalPosition.y * polygon.height) / size.y + polygon.pathOffset.y,
-  };
+  var polygon = transform.target,
+      currentControl = polygon.controls[polygon.__corner],
+      mouseLocalPosition = polygon.toLocalPoint(new fabric.Point(x, y), 'center', 'center'),
+      polygonBaseSize = polygon._getNonTransformedDimensions(),
+      size = polygon._getTransformedDimensions(0, 0),
+      finalPointPosition = {
+        x: mouseLocalPosition.x * polygonBaseSize.x / size.x + polygon.pathOffset.x,
+        y: mouseLocalPosition.y * polygonBaseSize.y / size.y + polygon.pathOffset.y
+      };
   polygon.points[currentControl.pointIndex] = finalPointPosition;
   return true;
 }
 
 function anchorWrapper(anchorIndex, fn) {
   return function(eventData, transform, x, y) {
-    var fabricObject = transform.target;
-    var point = {
-      x: fabricObject.points[anchorIndex].x - fabricObject.pathOffset.x,
-      y: fabricObject.points[anchorIndex].y - fabricObject.pathOffset.y,
-    };
+    var fabricObject = transform.target,
+        absolutePoint = fabric.util.transformPoint({
+            x: (fabricObject.points[anchorIndex].x - fabricObject.pathOffset.x),
+            y: (fabricObject.points[anchorIndex].y - fabricObject.pathOffset.y),
+        }, fabricObject.calcTransformMatrix()),
+        actionPerformed = fn(eventData, transform, x, y);
 
-    // update the transform border
     fabricObject._setPositionDimensions({});
 
-    // Now newX and newY represent the point position with a range from
-    // -0.5 to 0.5 for X and Y.
-    var newX = point.x / fabricObject.width;
-    var newY = point.y / fabricObject.height;
-
-    // Fabric supports numeric origins for objects with a range from 0 to 1.
-    // This let us use the relative position as an origin to translate the old absolutePoint.
-    var absolutePoint = fabric.util.transformPoint(point, fabricObject.calcTransformMatrix());
+    var polygonBaseSize = fabricObject._getNonTransformedDimensions(),
+        newX = (fabricObject.points[anchorIndex].x - fabricObject.pathOffset.x) / polygonBaseSize.x,
+        newY = (fabricObject.points[anchorIndex].y - fabricObject.pathOffset.y) / polygonBaseSize.y;
     fabricObject.setPositionByOrigin(absolutePoint, newX + 0.5, newY + 0.5);
-
-    // action performed
-    return fn(eventData, transform, x, y);
-  };
+    return actionPerformed;
+  }
 }
 
 function resizePolygon(peer) {
@@ -378,8 +373,9 @@ class Paper extends React.Component {
     if (!this.newFlag && this.mask != null) {
       if (evt.deselected && evt.deselected.length > 0) {
         evt.deselected.forEach((item) => {
-          if (item.id === "mask") {
+          if (item.id === "mask" && item.type === 'polygon') {
             item.edit = false;
+            item.controls = fabric.Object.prototype.controls;
           }
         });
       }
@@ -572,6 +568,9 @@ class Paper extends React.Component {
 
   cropImage() {
     if (this.paper != null) {
+      this.paper.discardActiveObject();
+      this.setZoom(1.0);
+      this.resetPosition();
       var items = this.paper.getObjects();
       if (items != null && this.mask != null) {
         var target = items[0];
@@ -600,9 +599,18 @@ class Paper extends React.Component {
         var width = (right - left) / (target.scaleX * zoomF);
         var height = (bottom - top) / (target.scaleY * zoomF);
         target.dirty = true;
-        // target.clipPath = mask;
+        target.clipPath = mask;
+        var mc = mask.getCenterPoint();
+        var tc = target.getCenterPoint();
         this.paper.remove(mask);
-
+        mask.originX = 'center';
+        mask.originY = 'center';
+        mask.left = -(tc.x - mc.x) / (target.scaleX);
+        mask.top = -(tc.y - mc.y) / (target.scaleY);
+        mask.scaleX = 1.0 * zoomF / (target.scaleX);
+        mask.scaleY = 1.0 * zoomF / (target.scaleY);
+        mask.setCoords();
+        mask.dirty = true;
 
         this.paper.renderAll();
 
@@ -619,6 +627,9 @@ class Paper extends React.Component {
         this.crBlob = crBlob;
         this.crImgUrl = cloned;
         fabric.Image.fromURL(cloned, this.loadCropedImage);
+      }
+      if (this.props.resetZoom != null) {
+        this.props.resetZoom();
       }
     }
   }
@@ -667,11 +678,21 @@ class Paper extends React.Component {
   loadRasterImage(img) {
     img.set(this.imageOptions);
     img.set({id:"target"});
+    var w = this.paper.getWidth();
+    var h = this.paper.getHeight();
     if (img.height > img.width) {
-      img.scaleToHeight(this.paper.getHeight());
+      img.scaleToHeight(h);
+    }
+    else if (img.width === img.height) {
+      if (w > h) {
+        img.scaleToWidth(h);
+      }
+      else {
+        img.scaleToWidth(w);
+      }
     }
     else {
-      img.scaleToWidth(this.paper.getWidth());
+      img.scaleToWidth(w);
     }
     this.paper.add(img);
     img.center().setCoords();
@@ -686,9 +707,6 @@ class Paper extends React.Component {
 
   polyModeMouseDown(o, peer) {
     if (!peer.newFlag && peer.mask != null) {
-      // var obj = peer.paper.findTarget(o);
-      // if (obj != null && obj === peer.mask) {
-      // }
       return;
     }
     if (peer.mask != null && o.target && o.target.id === this.pointArray[0].id) {
@@ -702,7 +720,7 @@ class Paper extends React.Component {
   polyModeMouseMove(o, peer) {
     if (peer.newFlag) {
       if (peer.activeLine && peer.activeLine.class === 'line') {
-        var pointer = peer.paper.getPointer(o.e); /// ???????
+        var pointer = peer.paper.getPointer(o);
         peer.activeLine.set({
           x2: pointer.x,
           y2: pointer.y
@@ -741,7 +759,6 @@ class Paper extends React.Component {
         height: 0,
         evented: true,
         selectable: true,
-        // hasControls: false,
         lockScewingX: true,
         lockScewingY: true,
         lockRotation: true,
@@ -749,9 +766,6 @@ class Paper extends React.Component {
         transparentCorners: true,
         cornerColor: 'red',
         cornerStrokeColor: 'red',
-        // borderColor: 'red',
-        // borderDashArray: [3, 3],
-        // padding: 10,
         hasBorder: false,
         id: "mask"
       };

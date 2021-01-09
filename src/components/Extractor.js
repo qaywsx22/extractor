@@ -6,7 +6,6 @@ import PDFRenderer from './PDFRenderer';
 import ValueChooser from './ValueChooser';
 import BusyIndicator from './BusyIndicator';
 import Dialog from './Dialog';
-// import ImageTracer from './imagetracer_v1.2.6';
 // import './Extractor.css';
 
 var ZoomContext = React.createContext(1.0);
@@ -22,6 +21,8 @@ class Extractor extends React.Component {
     this.zoomer = React.createRef();
     this.busyind = React.createRef();
     this.modDialog = React.createRef();
+    this.measurment = React.createRef();
+    this.exportFileName = React.createRef();
 
     this.processFiles = this.processFiles.bind(this);
     this.loadImage = this.loadImage.bind(this);
@@ -44,6 +45,7 @@ class Extractor extends React.Component {
     this.zoomFactor = 0.05;
     this.minZoom = 0.05;
     this.maxZoom = 5.0;
+    this.svgString = null;
   }
 
   toggleSelectionMode(e) {
@@ -75,6 +77,7 @@ class Extractor extends React.Component {
 
   processFiles(e) {
     if (e.target.files != null && e.target.files.length === 1) {
+      this.svgString = null;
       if (this.pap.current.allowedTypes.includes(e.target.files.item(0).type) || e.target.files.item(0).name.endsWith(".pdf")) {
         // show shield
         this.setShieldActive(true);
@@ -121,7 +124,46 @@ class Extractor extends React.Component {
   }
   
   onDialogAccept() {
-    console.log("Dialog content accepted");
+    if (this.svgString != null) {
+      var meas = null;
+      if (this.measurment.current != null) {
+        meas = this.measurment.current.value;
+      }
+      if (meas != null) {
+        var key = 'desc="';
+        var i1 = this.svgString.indexOf(key);
+        if (i1 >= 0) {
+          var i2 = this.svgString.indexOf('"', i1 + key.length);
+          if (i2 >= 0) {
+            var data = this.svgString.substring(0, i1 + key.length) + meas + this.svgString.substring(i2);
+            this.svgString = data;
+          }
+        }
+      }
+      var fileName = null;
+      if (this.exportFileName.current != null) {
+        fileName = this.exportFileName.current.value;
+      }
+      if (fileName != null) {
+        var blob = new Blob([this.svgString], {
+          "type": "image/svg+xml"
+        });
+        var a = document.createElement("a");
+        a.download = fileName;
+        a.href = URL.createObjectURL(blob);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    }
+    // var mess = "Dialog content accepted. ";
+    // if (this.measurment.current != null) {
+    //   mess += "Measurment=" + this.measurment.current.value + ". ";
+    // }
+    // if (this.exportFileName.current != null) {
+    //   mess += "Will be saved in " + this.exportFileName.current.value;
+    // }
+    // console.log(mess);
   }
 
   doVectorizeExtern(pngBlob) {
@@ -130,10 +172,8 @@ class Extractor extends React.Component {
     }
     // show shield
     this.setShieldActive(true);
-    // var proxyurl = "https://cors-anywhere.herokuapp.com/";
     var proxyurl = "";
     var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20';
-    // var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295';
     var xhr = new XMLHttpRequest();
     xhr.open("POST", (proxyurl+url), true); // method, url, async
     xhr.setRequestHeader("Cache-Control", "no-cache");
@@ -154,6 +194,7 @@ class Extractor extends React.Component {
   }
 
   showSVGResult(svgImgStr) {
+    this.svgString = svgImgStr;
     this.pap.current.loadResultSVGImage(svgImgStr);
   }
 
@@ -182,11 +223,12 @@ class Extractor extends React.Component {
               </Button>
 
               <Button name="clear" title={"Clear canvas"} className={"active"} handleClick={ () => {
-                this.pap.current.clearCanvas();
-                this.pdfRend.current.setState({
-                  file: null
-                });
-                      } }>
+                    this.svgString = null;
+                    this.pap.current.clearCanvas();
+                    this.pdfRend.current.setState({
+                      file: null
+                    });
+                  } }>
                 <img alt={"Clear canvas"} src="assets/close-circle-outline.svg"></img>
               </Button>
 
@@ -194,7 +236,7 @@ class Extractor extends React.Component {
                 <img alt={"Selection mode"} src={selIcon}></img>
               </Button>
 
-              <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => {this.pap.current.cropImage(); this.setShieldActive(true);} }>
+              <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage();} }>
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
 
@@ -256,11 +298,11 @@ class Extractor extends React.Component {
           <Dialog ref={this.modDialog} acceptCallback={this.onDialogAccept} title={"Save dialog"}>
             <div className={"dlgrow"}>
               <label>Measurement</label>
-              <input type="text" placeholder={"30 ft"}></input>
+              <input ref={this.measurment} type="text" placeholder={"30 ft"}></input>
             </div>
             <div className={"dlgrow"}>
               <label>File name</label>
-              <input type="text"></input>
+              <input ref={this.exportFileName} type="text"></input>
             </div>
           </Dialog>
 
