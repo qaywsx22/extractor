@@ -33,8 +33,10 @@ class Extractor extends React.Component {
     this.doVectorizeExtern = this.doVectorizeExtern.bind(this);
     this.doVectorizeIntern = this.doVectorizeIntern.bind(this);
     this.showSVGResult = this.showSVGResult.bind(this);
+    this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
 
     this.state = {
+      polySelection: false,
       zoom: '1.0',
       point: null
     }
@@ -42,6 +44,14 @@ class Extractor extends React.Component {
     this.zoomFactor = 0.05;
     this.minZoom = 0.05;
     this.maxZoom = 5.0;
+  }
+
+  toggleSelectionMode(e) {
+    if (this.pap.current == null) {
+      return;
+    }
+    this.pap.current.toggleSelectionMode();
+    this.setState({polySelection: this.pap.current.pathSelection});
   }
 
   setShieldActive(act) {
@@ -161,6 +171,7 @@ class Extractor extends React.Component {
   render() {
     var curzoom = this.state.zoom;
     var point = this.state.point;
+    var selIcon = this.state.polySelection ? "assets/square-dashed-outline.svg" : "assets/analytics-outline.svg";
     return (
         <div className="main">
           <ZoomContext.Provider value={curzoom}>
@@ -179,9 +190,14 @@ class Extractor extends React.Component {
                 <img alt={"Clear canvas"} src="assets/close-circle-outline.svg"></img>
               </Button>
 
+              <Button name="sel_mode" title={"Selection mode"} className={"active"} handleClick={ (e) => { this.toggleSelectionMode(e) } }>
+                <img alt={"Selection mode"} src={selIcon}></img>
+              </Button>
+
               <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => {this.pap.current.cropImage(); this.setShieldActive(true);} }>
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
+
               <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }>
               {/* <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeExtern(this.pap.current.crBlob) }> */}
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>

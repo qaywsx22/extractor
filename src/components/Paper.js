@@ -26,6 +26,253 @@ function b64toBlob(b64Data, contentType, sliceSize) {
   return blob;
 }
 
+function addPoint(evt, peer) {
+  var curZoom = peer.paper.getZoom();
+  var pointOption = {
+    id: new Date().getTime(),
+    radius: 5,
+    fill: '#ffffff',
+    stroke: '#333333',
+    strokeWidth: 0.5,
+    left: evt.e.layerX / curZoom,
+    top: evt.e.layerY / curZoom,
+    selectable: false,
+    hasBorders: false,
+    hasControls: false,
+    originX: 'center',
+    originY: 'center',
+    objectCaching: false,
+  };
+  var linePoints = [
+    evt.e.layerX / curZoom,
+    evt.e.layerY / curZoom,
+    evt.e.layerX / curZoom,
+    evt.e.layerY / curZoom,
+  ];
+  var lineOption = {
+    strokeWidth: 2,
+    fill: '#999999',
+    stroke: '#999999',
+    originX: 'center',
+    originY: 'center',
+    selectable: false,
+    hasBorders: false,
+    hasControls: false,
+    evented: false,
+    objectCaching: false,
+  };
+
+  var point = new fabric.Circle(pointOption);
+
+  if (peer.pointArray.length === 0) {
+    peer.newFlag = true;
+    // fill first point with red color
+    point.set({
+      fill: 'red'
+    });
+  }
+
+  var line = new fabric.Line(linePoints, lineOption);
+  line.class = 'line';
+  
+  var polygon = null;
+
+  if (peer.mask != null) {
+    var pos = peer.paper.getPointer(evt.e);
+    var points = peer.mask.get('points');
+    points.push({
+      x: pos.x,
+      y: pos.y
+    });
+    polygon = new fabric.Polygon(points, {
+      stroke: '#333333',
+      strokeWidth: 1,
+      fill: '#cccccc',
+      opacity: 0.3,
+      selectable: false,
+      hasBorders: false,
+      hasControls: false,
+      evented: false,
+      objectCaching: false,
+    });
+    peer.paper.remove(peer.mask);
+    peer.paper.add(polygon);
+    peer.mask = polygon;
+    peer.paper.renderAll();
+  } 
+  else {
+    var polyPoint = [{
+      x: evt.e.layerX / curZoom,
+      y: evt.e.layerY / curZoom,
+    }, ];
+    polygon = new fabric.Polygon(polyPoint, {
+      stroke: '#333333',
+      strokeWidth: 1,
+      fill: '#cccccc',
+      opacity: 0.3,
+      selectable: false,
+      hasBorders: false,
+      hasControls: false,
+      evented: false,
+      objectCaching: false,
+    });
+    peer.mask = polygon;
+    peer.paper.add(polygon);
+  }
+
+  peer.activeLine = line;
+  peer.pointArray.push(point);
+  peer.lineArray.push(line);
+
+  peer.paper.add(line);
+  peer.paper.add(point);
+}
+
+function generatePolygon(peer) {
+  var points = [];
+  // collect points and remove them from canvas
+  for (var point of peer.pointArray) {
+    points.push({
+      x: point.left,
+      y: point.top,
+    });
+    peer.paper.remove(point);
+  }
+
+  // remove lines from canvas
+  for (var line of peer.lineArray) {
+    peer.paper.remove(line);
+  }
+
+  // remove selected Shape and Line 
+  peer.paper.remove(peer.mask).remove(peer.activeLine);
+
+  // create polygon from collected points
+  var polygon = new fabric.Polygon(points, {
+    id: "mask",
+    objectCaching: false,
+    moveable: false,
+    selectable: true,
+    fill: "rgba(255,255,0,0.2)",
+    stroke: 'red',
+    strokeDashArray: [8, 8],
+    strokeWidth: 2,
+    opacity: 1.0
+});
+  peer.paper.add(polygon);
+  peer.mask = polygon;
+
+  toggleDrawPolygon(peer);
+  resizePolygon(peer);
+}
+
+function toggleDrawPolygon(peer) {
+  if (peer.newFlag) {
+    // stop draw mode
+    peer.activeLine = null;
+    peer.lineArray = [];
+    peer.pointArray = [];
+    peer.newFlag = false;
+  } else {
+    // start draw mode
+    peer.newFlag = true;
+  }
+}
+
+function editPolygon(peer) {
+  var activeObject = peer.paper.getActiveObject();
+  if (!activeObject) {
+    peer.paper.setActiveObject(peer.mask);
+    activeObject = peer.mask;
+  }
+
+  activeObject.edit = true;
+  activeObject.objectCaching = false;
+
+  var lastControl = activeObject.points.length - 1;
+  activeObject.cornerStyle = 'circle';
+  activeObject.controls = activeObject.points.reduce((acc, point, index) => {
+    acc['p' + index] = new fabric.Control({
+      positionHandler: polygonPositionHandler,
+      actionHandler: anchorWrapper(index > 0 ? index - 1 : lastControl, actionHandler),
+      actionName: 'modifyPolygon',
+      pointIndex: index,
+    });
+    return acc;
+  }, {});
+
+  activeObject.hasBorders = false;
+
+  peer.paper.requestRenderAll();
+}
+
+function polygonPositionHandler(dim, finalMatrix, fabricObject) {
+  var transformPoint = {
+    x: fabricObject.points[this.pointIndex].x - fabricObject.pathOffset.x,
+    y: fabricObject.points[this.pointIndex].y - fabricObject.pathOffset.y,
+  };
+  return fabric.util.transformPoint(transformPoint, fabricObject.calcTransformMatrix());
+}
+
+function actionHandler(eventData, transform, x, y) {
+  var polygon = transform.target;
+  var currentControl = polygon.controls[polygon.__corner];
+  var mouseLocalPosition = polygon.toLocalPoint(new fabric.Point(x, y), 'center', 'center');
+  var size = polygon._getTransformedDimensions(0, 0);
+  var finalPointPosition = {
+    x: (mouseLocalPosition.x * polygon.width) / size.x + polygon.pathOffset.x,
+    y: (mouseLocalPosition.y * polygon.height) / size.y + polygon.pathOffset.y,
+  };
+  polygon.points[currentControl.pointIndex] = finalPointPosition;
+  return true;
+}
+
+function anchorWrapper(anchorIndex, fn) {
+  return function(eventData, transform, x, y) {
+    var fabricObject = transform.target;
+    var point = {
+      x: fabricObject.points[anchorIndex].x - fabricObject.pathOffset.x,
+      y: fabricObject.points[anchorIndex].y - fabricObject.pathOffset.y,
+    };
+
+    // update the transform border
+    fabricObject._setPositionDimensions({});
+
+    // Now newX and newY represent the point position with a range from
+    // -0.5 to 0.5 for X and Y.
+    var newX = point.x / fabricObject.width;
+    var newY = point.y / fabricObject.height;
+
+    // Fabric supports numeric origins for objects with a range from 0 to 1.
+    // This let us use the relative position as an origin to translate the old absolutePoint.
+    var absolutePoint = fabric.util.transformPoint(point, fabricObject.calcTransformMatrix());
+    fabricObject.setPositionByOrigin(absolutePoint, newX + 0.5, newY + 0.5);
+
+    // action performed
+    return fn(eventData, transform, x, y);
+  };
+}
+
+function resizePolygon(peer) {
+  var activeObject = peer.paper.getActiveObject();
+  if (!activeObject) {
+    peer.paper.setActiveObject(peer.mask);
+    activeObject = peer.mask;
+  }
+
+  activeObject.edit = false;
+  activeObject.objectCaching = false;
+  activeObject.controls = fabric.Object.prototype.controls;
+  activeObject.cornerStyle = 'rect';
+  activeObject.cornerColor = 'red';
+  activeObject.transparentCorners = true;
+  activeObject.borderColor = 'red';
+  activeObject.hasBorders = true;
+
+  peer.paper.requestRenderAll();
+}
+
+
 class Paper extends React.Component {
 
   constructor(props) {
@@ -45,10 +292,17 @@ class Paper extends React.Component {
     this.cancelMask = this.cancelMask.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.removeOldImage = this.removeOldImage.bind(this);
+    this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
+    this.polyModeMouseDown = this.polyModeMouseDown.bind(this);
+    this.rectModeMouseDown = this.rectModeMouseDown.bind(this);
 
     this.wrapper = React.createRef();
     this.paperId = React.createRef();
 
+    this.pathSelection = false;
+    this.activeLine = null;
+    this.lineArray = [];
+    this.pointArray = [];
     this.crBlob = null;
     this.crImgUrl = null;
     this.paper = null;
@@ -72,7 +326,30 @@ class Paper extends React.Component {
       selectable: false,
       hoverCursor: 'default'
     };
-}
+  }
+
+  toggleSelectionMode() {
+    if (this.pathSelection) {
+      this.pathSelection = false;
+    }
+    else {
+      this.pathSelection = true;
+    }
+    this.cancelMask();
+    if (!this.pathSelection && this.paper != null) {
+      var locPaper = this.paper;
+      var items = this.paper.getObjects();
+      if (items != null) {
+        items = items.reverse();
+        items.forEach(function(item){
+          if ("target" !== item.id && "croped" !== item.id) {
+            locPaper.remove(item);
+          }
+        });
+      }
+      this.paper.requestRenderAll();
+    }
+  }  
 
   onMouseWheel(opt) {
     var pt = this.paper.getPointer(opt);
@@ -82,45 +359,57 @@ class Paper extends React.Component {
     opt.e.stopPropagation();
   }
 
+  onMouseDblclick(evt) {
+    if (evt.e.ctrlKey || !this.pathSelection) {
+      return;
+    }
+    if (!this.newFlag && this.mask != null) {
+      var obj = this.paper.findTarget(evt);
+      if (obj != null && obj === this.mask) {
+        editPolygon(this);
+      }
+    }
+  }
+
+  onSelectionCleared(evt) {
+    if (!this.pathSelection) {
+      return;
+    }
+    if (!this.newFlag && this.mask != null) {
+      if (evt.deselected && evt.deselected.length > 0) {
+        evt.deselected.forEach((item) => {
+          if (item.id === "mask") {
+            item.edit = false;
+          }
+        });
+      }
+    }
+  }
+
+  onSelectionCreated(evt) {
+    if (!this.pathSelection) {
+      return;
+    }
+    if (!this.newFlag && this.mask != null) {
+      if (evt.selected && evt.selected.length ===1 && evt.selected[0].id === "mask") {
+        resizePolygon(this);
+      }
+    }
+  }
+
   onMouseDown(evt) {
     if (evt.e.type.startsWith("touch")) {
       return;
     }
     this.mdp = {x:evt.e.screenX, y:evt.e.screenY};
-    if (!evt.e.ctrlKey) {
-      this.startPos = this.paper.getPointer(evt);
-      if (this.mask == null) {
-        this.mask = new fabric.Rect({
-          fill: "rgba(255,255,0,0.2)",
-          stroke: 'red',
-          strokeDashArray: [8, 8],
-          "stroke-width": 2,
-          opacity: 1.0,
-          left: this.startPos.x,
-          top: this.startPos.y,
-          width: 0,
-          height: 0,
-          evented: true,
-          selectable: true,
-          // hasControls: false,
-          lockScewingX: true,
-          lockScewingY: true,
-          lockRotation: true,
-          selectionBorderColor: 'red',
-          transparentCorners: true,
-          cornerColor: 'red',
-          cornerStrokeColor: 'red',
-          // borderColor: 'red',
-          // borderDashArray: [3, 3],
-          // padding: 10,
-          hasBorder: false,
-          id: "mask"
-        });
-        this.paper.add(this.mask);
-        this.mask.setControlVisible("mtr", false);
-        this.paper.requestRenderAll();
-        this.newFlag = true;
-      }
+    if (evt.e.ctrlKey) {
+      return;
+    }
+    if (this.pathSelection) {
+      this.polyModeMouseDown(evt, this);
+    }
+    else {
+      this.rectModeMouseDown(evt);
     }
   }
 
@@ -132,7 +421,10 @@ class Paper extends React.Component {
       this.updateViewBoxPosition(evt);
     }
     else {
-      if (this.mask != null) {
+      if (this.pathSelection) {
+        this.polyModeMouseUp(evt, this);
+      }
+      else if (this.mask != null) {
         if (this.moveFlag) {
           var endPos = this.paper.getPointer(evt);
           this.mask.set({
@@ -157,10 +449,10 @@ class Paper extends React.Component {
           this.paper.remove(this.mask);
           this.mask = null;
         }
+        this.newFlag = false;
       }
     }
     this.moveFlag = false;
-    this.newFlag = false;
     this.startPos = null;
     this.mdp = null;
   }
@@ -171,19 +463,13 @@ class Paper extends React.Component {
     }
     if (evt.e.ctrlKey) {
       this.updateViewBoxPosition(evt);
+      return;
+    }
+    if (this.pathSelection) {
+      this.polyModeMouseMove(evt, this);
     }
     else {
-      if (this.mask != null && this.startPos != null && this.newFlag) {
-        var pos = this.paper.getPointer(evt);
-        var w = pos.x - this.startPos.x;
-        var h = pos.y - this.startPos.y;
-        this.mask.set({
-          width: w,
-          height: h
-        });
-        this.paper.requestRenderAll();
-        this.moveFlag = true;
-      }
+      this.rectModeMouseMove(evt);
     }
   }
 
@@ -222,7 +508,20 @@ class Paper extends React.Component {
   onKeyDown(e) {
     if (e.keyCode === 27) { // ESC
       this.cancelMask(e);
-    }
+      if (this.pathSelection && this.paper != null) {
+        var locPaper = this.paper;
+        var items = this.paper.getObjects();
+        if (items != null) {
+          items = items.reverse();
+          items.forEach(function(item){
+            if ("target" !== item.id && "croped" !== item.id) {
+              locPaper.remove(item);
+            }
+          });
+        }
+        this.paper.requestRenderAll();
+      }
+      }
   }
 
   cancelMask(e) {
@@ -233,6 +532,9 @@ class Paper extends React.Component {
       this.paper.remove(this.mask);
       this.mask = null;
     }
+    this.pointArray = [];
+    this.lineArray = [];
+    this.activeLine = null;
     this.paper.requestRenderAll();
   }
 
@@ -244,6 +546,9 @@ class Paper extends React.Component {
     this.moveFlag = false;
     this.newFlag = false;
     this.mask = null;
+    this.pointArray = [];
+    this.lineArray = [];
+    this.activeLine = null;
     if (this.paper != null) {
       var locPaper = this.paper;
       var items = this.paper.getObjects();
@@ -294,8 +599,10 @@ class Paper extends React.Component {
         var cropY = (top - tco[0].y) / (target.scaleY * zoomF);
         var width = (right - left) / (target.scaleX * zoomF);
         var height = (bottom - top) / (target.scaleY * zoomF);
-        target.dirty=true;
+        target.dirty = true;
+        // target.clipPath = mask;
         this.paper.remove(mask);
+
 
         this.paper.renderAll();
 
@@ -377,6 +684,138 @@ class Paper extends React.Component {
     }
   }
 
+  polyModeMouseDown(o, peer) {
+    if (!peer.newFlag && peer.mask != null) {
+      // var obj = peer.paper.findTarget(o);
+      // if (obj != null && obj === peer.mask) {
+      // }
+      return;
+    }
+    if (peer.mask != null && o.target && o.target.id === this.pointArray[0].id) {
+      // when click on the first point
+      generatePolygon(peer);
+    } else {
+      addPoint(o, peer);
+    }
+  }
+  
+  polyModeMouseMove(o, peer) {
+    if (peer.newFlag) {
+      if (peer.activeLine && peer.activeLine.class === 'line') {
+        var pointer = peer.paper.getPointer(o.e); /// ???????
+        peer.activeLine.set({
+          x2: pointer.x,
+          y2: pointer.y
+        });
+        var points = peer.mask.get('points');
+        points[peer.pointArray.length] = {
+          x: pointer.x,
+          y: pointer.y,
+        };
+        peer.mask.set({
+          points
+        });
+      }
+      peer.paper.renderAll();
+    }
+  }
+
+  polyModeMouseUp(o, peer) {
+  }
+
+  rectModeMouseDown(evt) {
+    if (this.pathSelection) {
+      return;
+    }
+    this.startPos = this.paper.getPointer(evt);
+    if (this.mask == null) {
+      var rectMaskOptions = {
+        fill: "rgba(255,255,0,0.2)",
+        stroke: 'red',
+        strokeDashArray: [8, 8],
+        "stroke-width": 2,
+        opacity: 1.0,
+        left: this.startPos.x,
+        top: this.startPos.y,
+        width: 0,
+        height: 0,
+        evented: true,
+        selectable: true,
+        // hasControls: false,
+        lockScewingX: true,
+        lockScewingY: true,
+        lockRotation: true,
+        selectionBorderColor: 'red',
+        transparentCorners: true,
+        cornerColor: 'red',
+        cornerStrokeColor: 'red',
+        // borderColor: 'red',
+        // borderDashArray: [3, 3],
+        // padding: 10,
+        hasBorder: false,
+        id: "mask"
+      };
+      this.newFlag = true;
+      this.mask = new fabric.Rect(rectMaskOptions);
+      this.paper.add(this.mask);
+      this.mask.setControlVisible("mtr", false);
+      this.paper.requestRenderAll();
+    }
+  }
+
+  rectModeMouseMove(evt) {
+    if (this.pathSelection) {
+      return;
+    }
+    if (this.mask != null && this.startPos != null && this.newFlag) {
+      var pos = this.paper.getPointer(evt);
+      var w = pos.x - this.startPos.x;
+      var h = pos.y - this.startPos.y;
+      this.mask.set({
+        width: w,
+        height: h
+      });
+      this.paper.requestRenderAll();
+      this.moveFlag = true;
+    }
+  }
+
+  rectModeMouseUp(evt) {
+    if (this.pathSelection) {
+      return;
+    }
+    if (this.mask != null) {
+      if (this.moveFlag) {
+        var endPos = this.paper.getPointer(evt);
+        this.mask.set({
+          width: Math.abs(endPos.x - this.startPos.x),
+          height: Math.abs(endPos.y - this.startPos.y)
+        });
+        var o = {
+          left: this.startPos.x,
+          top: this.startPos.y
+        };
+        if (endPos.x < this.startPos.x) {
+          o.left = endPos.x;
+        }
+        if (endPos.y < this.startPos.y) {
+          o.top = endPos.y;
+        }
+        this.mask.setCoords(o);
+        this.paper.setActiveObject(this.mask);
+        this.paper.requestRenderAll();
+      }
+      else if (this.newFlag) {
+        this.paper.remove(this.mask);
+        this.mask = null;
+      }
+    }
+    this.moveFlag = false;
+    this.newFlag = false;
+    this.startPos = null;
+    this.mdp = null;
+  }
+
   initCanvas() {
     this.paper.selection = false;
     if (this.props.onMouseWheelZoom != null) {
@@ -386,6 +825,10 @@ class Paper extends React.Component {
     this.paper.on('mouse:up', this.onMouseUp.bind(this));
     this.paper.on('mouse:move', this.onMouseMove.bind(this));
     this.paper.on('mouse:move', this.onMouseMove.bind(this));
+    this.paper.on('mouse:dblclick', this.onMouseDblclick.bind(this));
+    this.paper.on('selection:cleared', this.onSelectionCleared.bind(this));
+    this.paper.on('selection:created', this.onSelectionCreated.bind(this));
+    
     window.addEventListener("resize", this.onWindowResize.bind(this)); 
   }
 
