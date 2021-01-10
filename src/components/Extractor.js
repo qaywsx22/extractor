@@ -129,15 +129,16 @@ class Extractor extends React.Component {
       if (this.measurment.current != null) {
         meas = this.measurment.current.value;
       }
-      if (meas != null) {
-        var key = 'desc="';
-        var i1 = this.svgString.indexOf(key);
-        if (i1 >= 0) {
-          var i2 = this.svgString.indexOf('"', i1 + key.length);
-          if (i2 >= 0) {
-            var data = this.svgString.substring(0, i1 + key.length) + meas + this.svgString.substring(i2);
-            this.svgString = data;
-          }
+      if (meas == null) {
+        meas = "";
+      }
+      var key = 'desc="';
+      var i1 = this.svgString.indexOf(key);
+      if (i1 >= 0) {
+        var i2 = this.svgString.indexOf('"', i1 + key.length);
+        if (i2 >= 0) {
+          var data = this.svgString.substring(0, i1 + key.length) + meas + this.svgString.substring(i2);
+          this.svgString = data;
         }
       }
       var fileName = null;
@@ -156,14 +157,6 @@ class Extractor extends React.Component {
         document.body.removeChild(a);
       }
     }
-    // var mess = "Dialog content accepted. ";
-    // if (this.measurment.current != null) {
-    //   mess += "Measurment=" + this.measurment.current.value + ". ";
-    // }
-    // if (this.exportFileName.current != null) {
-    //   mess += "Will be saved in " + this.exportFileName.current.value;
-    // }
-    // console.log(mess);
   }
 
   doVectorizeExtern(pngBlob) {

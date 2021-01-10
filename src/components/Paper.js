@@ -337,7 +337,7 @@ class Paper extends React.Component {
       if (items != null) {
         items = items.reverse();
         items.forEach(function(item){
-          if ("target" !== item.id && "croped" !== item.id) {
+          if ("target" !== item.id && "croped" !== item.id && "result" !== item.id) {
             locPaper.remove(item);
           }
         });
@@ -510,7 +510,7 @@ class Paper extends React.Component {
         if (items != null) {
           items = items.reverse();
           items.forEach(function(item){
-            if ("target" !== item.id && "croped" !== item.id) {
+            if ("target" !== item.id && "croped" !== item.id && "result" !== item.id) {
               locPaper.remove(item);
             }
           });
@@ -658,15 +658,16 @@ class Paper extends React.Component {
  
   loadResultSVGImage(svgString) {
     this.clearCanvas();        
-    fabric.loadSVGFromString(svgString, this.loadSVGImage, null, {crossOrigin: 'anonymous'});  
+    fabric.loadSVGFromString(svgString, this.loadSVGImage, null, {crossOrigin: 'anonymous', id: 'result'});  
   }
 
   loadSVGImage(objects, options) {
     var obj = fabric.util.groupSVGElements(objects, options);
     obj.set(this.imageOptions);
+    // obj.needsItsOwnCache = () => {return true};
     this.paper.add(obj);
     obj.center().setCoords();
-
+    obj.set({id: options.id}); 
     this.paper.renderAll()
     this.paper.fire('object:modified')
     // hide shield
@@ -874,7 +875,7 @@ class Paper extends React.Component {
       if (file.type === 'image/svg+xml') {
         callback = this.loadSVGImage;
         reader.onload = function(f) {
-          fabric.loadSVGFromString(f.target.result, callback, null, {crossOrigin: 'anonymous'});
+          fabric.loadSVGFromString(f.target.result, callback, null, {crossOrigin: 'anonymous', id: 'target'});
         }
         reader.readAsText(file);
         return;
