@@ -740,6 +740,23 @@ class Paper extends React.Component {
 
     this.paper.renderAll();
     this.paper.fire('object:modified');
+
+    var optObj = {
+      left:0, 
+      top:0, 
+      width:img.width, 
+      height:img.height, 
+      withoutTransform: true, 
+      withoutShadow: true
+    };
+    var cloned = img.toDataURL(optObj);
+    var crBlob = b64toBlob(cloned.split(",")[1], "image/png");
+    this.crBlob = crBlob;
+    this.crImgUrl = cloned;
+
+    if (this.props.vectButtonStateHandler != null) {
+      this.props.vectButtonStateHandler();
+    }
     if (this.props.cropButtonStateHandler != null) {
       this.props.cropButtonStateHandler();
     }
