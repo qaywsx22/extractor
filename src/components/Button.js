@@ -7,6 +7,7 @@ var Button = React.forwardRef((props, ref) => (
     onClick={props.handleClick}
     title={props.title}
     className={props.className}
+    disabled={props.disabled === true}
     >{props.children}
   </button>
 ))

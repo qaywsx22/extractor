@@ -290,6 +290,8 @@ class Paper extends React.Component {
     this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
     this.polyModeMouseDown = this.polyModeMouseDown.bind(this);
     this.rectModeMouseDown = this.rectModeMouseDown.bind(this);
+    this.isCropEnabled = this.isCropEnabled.bind(this);
+    this.removeProcessedImages = this.removeProcessedImages.bind(this);
 
     this.wrapper = React.createRef();
     this.paperId = React.createRef();
@@ -559,61 +561,93 @@ class Paper extends React.Component {
     }
   }
 
-  clearCanvas() {
-    this.removeOldImage();
-    // this.crBlob = null
-    // this.crImgUrl = null;
-    this.setState({file: null});
+  removeProcessedImages() {
+    this.crBlob = null
+    this.crImgUrl = null;
+    if (this.paper != null) {
+      var locPaper = this.paper;
+      var items = this.paper.getObjects();
+      if (items != null) {
+        items = items.reverse();
+        items.forEach(function(item){
+          if (item.id !== "target") {
+            locPaper.remove(item);
+          }
+        });
+      }
+      this.paper.requestRenderAll();
+    }
   }
 
+  clearCanvas() {
+    this.removeOldImage();
+    this.setState({file: null});
+    if (this.props.cropButtonStateHandler != null) {
+      this.props.cropButtonStateHandler();
+    }
+  }
+  
   cropImage() {
     if (this.paper != null) {
       this.paper.discardActiveObject();
       this.setZoom(1.0);
       this.resetPosition();
+      var target = null;
       var items = this.paper.getObjects();
-      if (items != null && this.mask != null) {
-        var target = items[0];
-        var mask = this.mask;
-        var tco = target.getCoords();
-        var mco = mask.getCoords();
-        var left = tco[0].x;
-        if (mco[0].x > left) {
-          left = mco[0].x;
-        }
-        var top = tco[0].y;
-        if (mco[0].y > top) {
-          top = mco[0].y;
-        }
-        var bottom = tco[2].y;
-        if (mco[2].y < bottom) {
-          bottom = mco[2].y;
-        }
-        var right = tco[1].x;
-        if (mco[1].x < right) {
-          right = mco[1].x;
-        }
+      if (items != null) {
+        items.forEach((item) => {
+          if (item != null && (item.id === "target" || item.id === "croped")) {
+            target = item;
+            return false;
+          }
+        });
+      }
+      if (target != null) {
         var zoomF = this.paper.getZoom();
-        var cropX = (left - tco[0].x) / (target.scaleX * zoomF);
-        var cropY = (top - tco[0].y) / (target.scaleY * zoomF);
-        var width = (right - left) / (target.scaleX * zoomF);
-        var height = (bottom - top) / (target.scaleY * zoomF);
-        target.dirty = true;
-        target.clipPath = mask;
-        var mc = mask.getCenterPoint();
-        var tc = target.getCenterPoint();
-        this.paper.remove(mask);
-        mask.originX = 'center';
-        mask.originY = 'center';
-        mask.left = -(tc.x - mc.x) / (target.scaleX);
-        mask.top = -(tc.y - mc.y) / (target.scaleY);
-        mask.scaleX = 1.0 * zoomF / (target.scaleX);
-        mask.scaleY = 1.0 * zoomF / (target.scaleY);
-        mask.setCoords();
-        mask.dirty = true;
+        var tco = target.getCoords();
+        var left = tco[0].x;
+        var right = tco[1].x;
+        var top = tco[0].y;
+        var bottom = tco[2].y;
+        var cropX = 0;
+        var cropY = 0;
+        var width = target.width;
+        var height = target.height;
+        var mask = this.mask;
+        if (mask != null) {
+          var mco = mask.getCoords();
+          if (mco[0].x > left) {
+            left = mco[0].x;
+          }
+          if (mco[0].y > top) {
+            top = mco[0].y;
+          }
+          if (mco[2].y < bottom) {
+            bottom = mco[2].y;
+          }
+          if (mco[1].x < right) {
+            right = mco[1].x;
+          }
+          cropX = (left - tco[0].x) / (target.scaleX * zoomF);
+          cropY = (top - tco[0].y) / (target.scaleY * zoomF);
+          width = (right - left) / (target.scaleX * zoomF);
+          height = (bottom - top) / (target.scaleY * zoomF);
+          target.dirty = true;
+          target.clipPath = mask;
+          var mc = mask.getCenterPoint();
+          var tc = target.getCenterPoint();
+          this.paper.remove(mask);
+          mask.originX = 'center';
+          mask.originY = 'center';
+          mask.left = -(tc.x - mc.x) / (target.scaleX);
+          mask.top = -(tc.y - mc.y) / (target.scaleY);
+          mask.scaleX = 1.0 * zoomF / (target.scaleX);
+          mask.scaleY = 1.0 * zoomF / (target.scaleY);
+          mask.setCoords();
+          mask.dirty = true;
 
-        this.paper.renderAll();
-
+          this.paper.renderAll();
+        }
         var optObj = {
           left:cropX, 
           top:cropY, 
@@ -626,6 +660,9 @@ class Paper extends React.Component {
         var crBlob = b64toBlob(cloned.split(",")[1], "image/png");
         this.crBlob = crBlob;
         this.crImgUrl = cloned;
+        if (this.props.vectButtonStateHandler != null) {
+          this.props.vectButtonStateHandler();
+        }
         fabric.Image.fromURL(cloned, this.loadCropedImage);
       }
       if (this.props.resetZoom != null) {
@@ -650,6 +687,9 @@ class Paper extends React.Component {
     this.paper.requestRenderAll();
     this.paper.fire('object:modified');
 
+    if (this.props.cropButtonStateHandler != null) {
+      this.props.cropButtonStateHandler();
+    }
     // hide shield
     if (this.props.shieldHandler != null) {
       this.props.shieldHandler(false);
@@ -700,6 +740,9 @@ class Paper extends React.Component {
 
     this.paper.renderAll();
     this.paper.fire('object:modified');
+    if (this.props.cropButtonStateHandler != null) {
+      this.props.cropButtonStateHandler();
+    }
     // hide shield
     if (this.props.shieldHandler != null) {
       this.props.shieldHandler(false);
@@ -829,6 +872,23 @@ class Paper extends React.Component {
     this.newFlag = false;
     this.startPos = null;
     this.mdp = null;
+  }
+
+  isCropEnabled() {
+    if (this.paper != null) {
+      var items = this.paper.getObjects();
+      if (items != null) {
+        var found = null;
+        items.forEach((item) => {
+          if (item != null && (item.id === "target" || item.id === "croped")) {
+            found = item;
+            return false;
+          }
+        });
+        return (found != null);
+      }
+    }
+    return false;
   }
 
   initCanvas() {

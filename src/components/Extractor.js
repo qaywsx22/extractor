@@ -23,6 +23,10 @@ class Extractor extends React.Component {
     this.modDialog = React.createRef();
     this.measurment = React.createRef();
     this.exportFileName = React.createRef();
+    this.saveButton = React.createRef();
+    this.cropButton = React.createRef();
+    this.vectButton = React.createRef();
+
 
     this.processFiles = this.processFiles.bind(this);
     this.loadImage = this.loadImage.bind(this);
@@ -35,11 +39,17 @@ class Extractor extends React.Component {
     this.doVectorizeIntern = this.doVectorizeIntern.bind(this);
     this.showSVGResult = this.showSVGResult.bind(this);
     this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
-
+    this.updateSaveButton = this.updateSaveButton.bind(this);
+    this.updateCropButton = this.updateCropButton.bind(this);
+    this.updateVectButton = this.updateVectButton.bind(this);
+    
     this.state = {
       polySelection: false,
       zoom: '1.0',
-      point: null
+      point: null,
+      saveEnabled: false,
+      cropEnabled: false,
+      vectEnabled: false
     }
 
     this.zoomFactor = 0.05;
@@ -78,12 +88,14 @@ class Extractor extends React.Component {
   processFiles(e) {
     if (e.target.files != null && e.target.files.length === 1) {
       this.svgString = null;
+      this.updateSaveButton();      
       if (this.pap.current.allowedTypes.includes(e.target.files.item(0).type) || e.target.files.item(0).name.endsWith(".pdf")) {
         // show shield
         this.setShieldActive(true);
         this.pap.current.crBlob = null
         this.pap.current.crImgUrl = null;
-          this.pdfRend.current.setState({
+        this.updateVectButton();      
+        this.pdfRend.current.setState({
           paperSetImage: this.pap.current.loadRasterImage, 
           file: e.target.files.item(0)
         });
@@ -113,6 +125,7 @@ class Extractor extends React.Component {
   componentDidMount() {
     this.pdfRend.current.setState({paperSetImage: this.pap.current.loadRasterImage, paperRemoveOldImage: this.pap.current.removeOldImage});
     this.zoomer.current.setState({active: true});
+    this.updateSaveButton();
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -188,6 +201,7 @@ class Extractor extends React.Component {
 
   showSVGResult(svgImgStr) {
     this.svgString = svgImgStr;
+    this.updateSaveButton();
     this.pap.current.loadResultSVGImage(svgImgStr);
   }
 
@@ -199,6 +213,39 @@ class Extractor extends React.Component {
     this.setShieldActive(true);
     if (window.ImageTracer != null) {
       window.ImageTracer.imageToSVG(pngImg, this.showSVGResult);
+    }
+  }
+
+  updateSaveButton() {
+    if (this.saveButton.current != null) {
+      if (this.svgString != null) {
+        this.setState({saveEnabled: true});
+      }
+      else {
+        this.setState({saveEnabled: false});
+      }
+    }
+  }
+
+  updateCropButton() {
+    if (this.cropButton.current != null) {
+      if (this.pap.current != null) {
+        this.setState({cropEnabled: this.pap.current.isCropEnabled()});
+      }
+      else {
+        this.setState({cropEnabled: false});
+      }
+    }
+  }
+
+  updateVectButton() {
+    if (this.vectButton.current != null) {
+      if (this.pap.current != null && this.pap.current.crImgUrl != null) {
+        this.setState({vectEnabled: true});
+      }
+      else {
+        this.setState({vectEnabled: false});
+      }
     }
   }
 
@@ -217,27 +264,53 @@ class Extractor extends React.Component {
 
               <Button name="clear" title={"Clear canvas"} className={"active"} handleClick={ () => {
                     this.svgString = null;
+                    this.pap.current.removeProcessedImages();
                     this.pap.current.clearCanvas();
                     this.pdfRend.current.setState({
                       file: null
                     });
+                    this.updateSaveButton();
+                    this.updateCropButton();
+                    this.updateVectButton();
                   } }>
                 <img alt={"Clear canvas"} src="assets/close-circle-outline.svg"></img>
               </Button>
 
-              <Button name="sel_mode" title={"Selection mode"} className={"active"} handleClick={ (e) => { this.toggleSelectionMode(e) } }>
+              <Button name="sel_mode" 
+                title={"Selection mode"} 
+                className={"active"} 
+                handleClick={ (e) => { this.toggleSelectionMode(e) } }
+              >
                 <img alt={"Selection mode"} src={selIcon}></img>
               </Button>
 
-              <Button name="crop" title={"Crop image"} className={"active"} handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage();} }>
+              <Button name="crop" 
+                ref={this.cropButton} 
+                title={"Crop image"} 
+                className={"active"} 
+                handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage();} }
+                disabled={!this.state.cropEnabled}
+              >
                 <img alt={"Crop"} src="assets/crop-outline.svg"></img>
               </Button>
 
-              <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }>
               {/* <Button name="to_vector" title={"Vectorize"} className={"active"} handleClick={ () => this.doVectorizeExtern(this.pap.current.crBlob) }> */}
+              <Button name="to_vector" 
+                ref={this.vectButton} 
+                title={"Vectorize"} 
+                className={"active"} 
+                handleClick={ () => this.doVectorizeIntern(this.pap.current.crImgUrl) }
+                disabled={!this.state.vectEnabled}
+              >
                 <img alt={"Vectorize"} src="assets/vector.svg"></img>
               </Button>
-              <Button name="save" title={"Save"} className={"active"} handleClick={ () => this.showModalDialog() }>
+              <Button name="save" 
+                ref={this.saveButton} 
+                title={"Save"} 
+                className={"active"} 
+                handleClick={ () => this.showModalDialog() }
+                disabled={!this.state.saveEnabled}
+              >
                 <img alt={"Save"} src="assets/save-outline.svg"></img>
               </Button>
 
@@ -280,6 +353,8 @@ class Extractor extends React.Component {
                 onMouseWheelZoom={this.doZoom}
                 resetZoom={() => this.setState({zoom:1.0})}
                 shieldHandler={this.setShieldActive}
+                cropButtonStateHandler={this.updateCropButton}
+                vectButtonStateHandler={this.updateVectButton}
               /> 
             </div>
           </ZoomContext.Provider>
