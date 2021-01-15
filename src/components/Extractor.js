@@ -9,6 +9,9 @@ import Dialog from './Dialog';
 // import './Extractor.css';
 
 var ZoomContext = React.createContext(1.0);
+var cm_apiURL = process.env.REACT_APP_APIUrl;
+var cm_apiKey = process.env.REACT_APP_APIKey;
+var cm_apiSecret = process.env.REACT_APP_APISecret;
 
 class Extractor extends React.Component {
 
@@ -26,6 +29,11 @@ class Extractor extends React.Component {
     this.saveButton = React.createRef();
     this.cropButton = React.createRef();
     this.vectButton = React.createRef();
+    this.settingsButton = React.createRef();
+    this.eaConfDialog = React.createRef();
+    this.eaUrl = React.createRef();
+    this.eaKey = React.createRef();
+    this.eaSecret = React.createRef();
 
 
     this.processFiles = this.processFiles.bind(this);
@@ -35,13 +43,15 @@ class Extractor extends React.Component {
     this.setShieldActive = this.setShieldActive.bind(this);
     this.showModalDialog = this.showModalDialog.bind(this);
     this.onDialogAccept = this.onDialogAccept.bind(this);
-    this.doVectorizeExtern = this.doVectorizeExtern.bind(this);
+    // this.doVectorizeExtern = this.doVectorizeExtern.bind(this);
     this.doVectorizeIntern = this.doVectorizeIntern.bind(this);
     this.showSVGResult = this.showSVGResult.bind(this);
     this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
     this.updateSaveButton = this.updateSaveButton.bind(this);
     this.updateCropButton = this.updateCropButton.bind(this);
     this.updateVectButton = this.updateVectButton.bind(this);
+    this.showExternalApiConfigurationDialog = this.showExternalApiConfigurationDialog.bind(this);
+    this.onExternalAPIConfigAccept = this.onExternalAPIConfigAccept.bind(this);
     
     this.state = {
       polySelection: false,
@@ -82,6 +92,21 @@ class Extractor extends React.Component {
   showModalDialog() {
     if (this.modDialog.current != null) {
       this.modDialog.current.setState({active: true});
+    }
+  }
+
+  showExternalApiConfigurationDialog() {
+    if (this.eaConfDialog.current != null) {
+      if (this.eaUrl.current != null) {
+        this.eaUrl.current.value = (cm_apiURL == null ? "" : cm_apiURL);
+      }
+      if (this.eaKey.current != null) {
+        this.eaKey.current.value = (cm_apiKey == null ? "" : cm_apiKey);
+      }
+      if (this.eaSecret.current != null) {
+        this.eaSecret.current.value = (cm_apiSecret == null ? "" : cm_apiSecret);
+      }
+        this.eaConfDialog.current.setState({active: true});
     }
   }
 
@@ -136,6 +161,33 @@ class Extractor extends React.Component {
     this.hiddenFileInput.current.click();
   }
   
+  onExternalAPIConfigAccept() {
+    if (this.eaUrl.current != null) {
+      if (this.eaUrl.current.value == null || this.eaUrl.current.value === "") {
+        cm_apiURL = null;
+      }
+      else {
+        cm_apiURL = this.eaUrl.current.value;
+      }
+    }
+    if (this.eaKey.current != null) {
+      if (this.eaKey.current.value == null || this.eaKey.current.value === "") {
+        cm_apiKey = null;
+      }
+      else {
+        cm_apiKey = this.eaKey.current.value;
+      }
+    }
+    if (this.eaSecret.current != null) {
+      if (this.eaSecret.current.value == null || this.eaSecret.current.value === "") {
+        cm_apiSecret = null;
+      }
+      else {
+        cm_apiSecret = this.eaSecret.current.value;
+      }
+    }
+  }
+
   onDialogAccept() {
     if (this.svgString != null) {
       var meas = null;
@@ -172,32 +224,32 @@ class Extractor extends React.Component {
     }
   }
 
-  doVectorizeExtern(pngBlob) {
-    if (pngBlob == null) {
-      return;
-    }
-    // show shield
-    this.setShieldActive(true);
-    var proxyurl = "";
-    var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20';
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", (proxyurl+url), true); // method, url, async
-    xhr.setRequestHeader("Cache-Control", "no-cache");
-    xhr.setRequestHeader("Content-Type", "multipart/form-data");
+  // doVectorizeExtern(pngBlob) {
+  //   if (pngBlob == null) {
+  //     return;
+  //   }
+  //   // show shield
+  //   this.setShieldActive(true);
+  //   var proxyurl = "";
+  //   var url = 'https://api.vectorizer.io/v3/vectorize?apikey=69936907-18666295&colors=8&minarea=5&threshold=20';
+  //   var xhr = new XMLHttpRequest();
+  //   xhr.open("POST", (proxyurl+url), true); // method, url, async
+  //   xhr.setRequestHeader("Cache-Control", "no-cache");
+  //   xhr.setRequestHeader("Content-Type", "multipart/form-data");
 
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4) {      // completed
-          if (xhr.status === 200) {    // OK
-              var response = xhr.responseText;
-              console.log(response.type);
-          }
-          else {
-            console.log("Vectorize error: "+xhr.status);
-          }
-      }
-    }    
-    xhr.send(pngBlob);
-  }
+  //   xhr.onreadystatechange = function() {
+  //     if (xhr.readyState === 4) {      // completed
+  //         if (xhr.status === 200) {    // OK
+  //             var response = xhr.responseText;
+  //             console.log(response.type);
+  //         }
+  //         else {
+  //           console.log("Vectorize error: "+xhr.status);
+  //         }
+  //     }
+  //   }    
+  //   xhr.send(pngBlob);
+  // }
 
   showSVGResult(svgImgStr) {
     this.svgString = svgImgStr;
@@ -253,6 +305,7 @@ class Extractor extends React.Component {
     var curzoom = this.state.zoom;
     var point = this.state.point;
     var selIcon = this.state.polySelection ? "assets/square-dashed-outline.svg" : "assets/analytics-outline.svg";
+    var useExternalCroppingAllowed = (cm_apiKey != null && cm_apiSecret != null && cm_apiURL != null);
     return (
         <div className="main">
           <ZoomContext.Provider value={curzoom}>
@@ -288,6 +341,7 @@ class Extractor extends React.Component {
                 ref={this.cropButton} 
                 title={"Crop image"} 
                 className={"active"} 
+                // handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage(); this.doCropExtern(this.pap.current.crBlob);} }
                 handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage();} }
                 disabled={!this.state.cropEnabled}
               >
@@ -312,6 +366,14 @@ class Extractor extends React.Component {
                 disabled={!this.state.saveEnabled}
               >
                 <img alt={"Save"} src="assets/save-outline.svg"></img>
+              </Button>
+              <Button name="settings" 
+                ref={this.saveButton} 
+                title={"Settings"} 
+                className={"active"} 
+                handleClick={ () => this.showExternalApiConfigurationDialog() }
+              >
+                <img alt={"Save"} src="assets/settings-outline.svg"></img>
               </Button>
 
               <PDFRenderer ref={this.pdfRend} shieldHandler={this.setShieldActive}/>
@@ -355,6 +417,10 @@ class Extractor extends React.Component {
                 shieldHandler={this.setShieldActive}
                 cropButtonStateHandler={this.updateCropButton}
                 vectButtonStateHandler={this.updateVectButton}
+                useExternalCropping={useExternalCroppingAllowed}
+                apiKey={cm_apiKey}
+                apiSecret={cm_apiSecret}
+                apiURL={cm_apiURL}
               /> 
             </div>
           </ZoomContext.Provider>
@@ -371,6 +437,21 @@ class Extractor extends React.Component {
             <div className={"dlgrow"}>
               <label>File name</label>
               <input ref={this.exportFileName} type="text"></input>
+            </div>
+          </Dialog>
+
+          <Dialog ref={this.eaConfDialog} acceptCallback={this.onExternalAPIConfigAccept} title={"External API configuration"}>
+            <div className={"dlgrow"}>
+              <label>API URL</label>
+              <input ref={this.eaUrl} type="text"></input>
+            </div>
+            <div className={"dlgrow"}>
+              <label>API Key (User Id)</label>
+              <input ref={this.eaKey} type="text"></input>
+            </div>
+            <div className={"dlgrow"}>
+              <label>API Secret</label>
+              <input ref={this.eaSecret} type="text"></input>
             </div>
           </Dialog>
 

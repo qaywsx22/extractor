@@ -292,6 +292,7 @@ class Paper extends React.Component {
     this.rectModeMouseDown = this.rectModeMouseDown.bind(this);
     this.isCropEnabled = this.isCropEnabled.bind(this);
     this.removeProcessedImages = this.removeProcessedImages.bind(this);
+    this.doCropExtern = this.doCropExtern.bind(this);
 
     this.wrapper = React.createRef();
     this.paperId = React.createRef();
@@ -658,17 +659,66 @@ class Paper extends React.Component {
         };
         var cloned = target.toDataURL(optObj);
         var crBlob = b64toBlob(cloned.split(",")[1], "image/png");
-        this.crBlob = crBlob;
-        this.crImgUrl = cloned;
-        if (this.props.vectButtonStateHandler != null) {
-          this.props.vectButtonStateHandler();
+        if (this.props.useExternalCropping) {
+          // this.crBlob = crBlob;
+          this.doCropExtern(crBlob);
         }
-        fabric.Image.fromURL(cloned, this.loadCropedImage);
+        else {
+          this.crImgUrl = cloned;
+          if (this.props.vectButtonStateHandler != null) {
+            this.props.vectButtonStateHandler();
+          }
+          fabric.Image.fromURL(cloned, this.loadCropedImage);
+        }
       }
       if (this.props.resetZoom != null) {
         this.props.resetZoom();
       }
     }
+  }
+
+  doCropExtern(pngBlob) {
+    if (pngBlob == null || this.props.apiKey == null || this.props.apiSecret == null || this.props.apiURL == null) {
+      // hide shield
+      if (this.props.shieldHandler != null) {
+        this.props.shieldHandler(false);
+      }
+      return;
+    }
+    var proxyurl = "";
+    var url = this.props.apiURL;
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", (proxyurl+url), true); // method, url, async
+    // xhr.setRequestHeader("Authorization", "Basic " + btoa('8151:amntk91kircq1mmnddbitg5imbavpqflp1f8moes8hego8ctrfju'));
+    xhr.setRequestHeader("Authorization", "Basic " + btoa(this.props.apiKey + ':' + this.props.apiSecret));
+    xhr.responseType = 'arraybuffer';
+    var fd = new FormData();
+    fd.append('image', pngBlob);
+    fd.append('format', 'result');
+    fd.append('test', 'true');
+    var pap = this;
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {      // completed
+        if (xhr.status === 200) {    // OK
+          var b64 = btoa(new Uint8Array(xhr.response).reduce(
+            function (data, byte) {
+                return data + String.fromCharCode(byte);
+            },'')
+          );
+          var dataURL="data:image/png;base64,"+b64;
+          pap.removeProcessedImages();
+          pap.crImgUrl = dataURL;
+          if (pap.props.vectButtonStateHandler != null) {
+            pap.props.vectButtonStateHandler();
+          }
+          fabric.Image.fromURL(dataURL, pap.loadCropedImage);
+        }
+        else {
+          console.log("Autocrop error: "+xhr.status);
+        }
+      }
+    }    
+    xhr.send(fd);
   }
 
   loadCropedImage(img) {
