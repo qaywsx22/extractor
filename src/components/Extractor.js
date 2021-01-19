@@ -12,6 +12,7 @@ var ZoomContext = React.createContext(1.0);
 var cm_apiURL = process.env.REACT_APP_APIUrl;
 var cm_apiKey = process.env.REACT_APP_APIKey;
 var cm_apiSecret = process.env.REACT_APP_APISecret;
+var isTest = true;
 
 class Extractor extends React.Component {
 
@@ -34,6 +35,7 @@ class Extractor extends React.Component {
     this.eaUrl = React.createRef();
     this.eaKey = React.createRef();
     this.eaSecret = React.createRef();
+    this.eaTest = React.createRef();
 
 
     this.processFiles = this.processFiles.bind(this);
@@ -106,7 +108,10 @@ class Extractor extends React.Component {
       if (this.eaSecret.current != null) {
         this.eaSecret.current.value = (cm_apiSecret == null ? "" : cm_apiSecret);
       }
-        this.eaConfDialog.current.setState({active: true});
+      if (this.eaTest.current != null) {
+        this.eaTest.current.checked = isTest;
+      }
+      this.eaConfDialog.current.setState({active: true});
     }
   }
 
@@ -185,6 +190,9 @@ class Extractor extends React.Component {
       else {
         cm_apiSecret = this.eaSecret.current.value;
       }
+    }
+    if (this.eaTest.current != null) {
+      isTest = this.eaTest.current.checked;
     }
   }
 
@@ -341,7 +349,6 @@ class Extractor extends React.Component {
                 ref={this.cropButton} 
                 title={"Crop image"} 
                 className={"active"} 
-                // handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage(); this.doCropExtern(this.pap.current.crBlob);} }
                 handleClick={ () => { this.setShieldActive(true); this.pap.current.cropImage();} }
                 disabled={!this.state.cropEnabled}
               >
@@ -421,6 +428,7 @@ class Extractor extends React.Component {
                 apiKey={cm_apiKey}
                 apiSecret={cm_apiSecret}
                 apiURL={cm_apiURL}
+                isTest={isTest}
               /> 
             </div>
           </ZoomContext.Provider>
@@ -452,6 +460,10 @@ class Extractor extends React.Component {
             <div className={"dlgrow"}>
               <label>API Secret</label>
               <input ref={this.eaSecret} type="text"></input>
+            </div>
+            <div className={"dlgrow"}>
+              <label>Test</label>
+              <input ref={this.eaTest} type="checkbox"></input>
             </div>
           </Dialog>
 

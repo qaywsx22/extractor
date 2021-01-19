@@ -695,7 +695,7 @@ class Paper extends React.Component {
     var fd = new FormData();
     fd.append('image', pngBlob);
     fd.append('format', 'result');
-    fd.append('test', 'true');
+    fd.append('test', this.props.isTest);
     var pap = this;
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {      // completed
